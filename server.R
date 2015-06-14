@@ -10,6 +10,8 @@ library(shiny)
 # Define server logic for random distribution application
 shinyServer(function(input, output, session) {
   
+  load("data/countriesPop.RData")
+  
   dataValues <- reactiveValues(dataSource= NULL, rawDF = NULL, calcDF = NULL, resultDF = NULL)
   
   analysisValues <- reactiveValues(AFC = NULL, CAH = NULL, Clusters = NULL)
@@ -33,38 +35,53 @@ shinyServer(function(input, output, session) {
   
   #### Data upload ####
   
-  observe({
-    csvPath <- dataValues$dataSource
-    if (is.null(csvPath)){
-      dataValues$rawDF <- NULL
-    } else {
-      dataValues$rawDF <- read.csv(file=csvPath,
-                                   quote=input$quote,
-                                   sep=input$sep,
-                                   dec=input$dec,
-                                   header=input$header,
-                                   check.names = FALSE,
-                                   stringsAsFactors=FALSE)
-      allColumns <- c("None", unlist(colnames(dataValues$rawDF)))
-      if (csvPath == "data/AuPop_full.csv"){
-        testDataUpdateInputs(session, allColumns)
-      } else {
-        updateInputs(session, allColumns)
-      }}
-  })
+
    
+  observe({
+    countryName <- input$dataset
+    if (countryName ==  "Brazil") {
+      dataValues$rawDF <- Brazil
+    } else if (countryName ==  "Russia") {
+      dataValues$rawDF <- Russia
+    } else  if (countryName ==  "India"){
+      dataValues$rawDF <- India
+    }  else if (countryName ==  "China"){
+      dataValues$rawDF <- China
+    } else  if (countryName ==  "South Africa"){
+      dataValues$rawDF <- SouthAfrica
+    } else if (countryName ==  "USA"){
+      dataValues$rawDF <- USA
+    } else  {
+      dataValues$rawDF <- France 
+    }
+    timeColumns <-  as.numeric(na.omit(as.numeric(unlist(colnames(dataValues$rawDF)))))
+    allColumns <- c("None", unlist(colnames(dataValues$rawDF)))
+    updateInputs(session, allColumns, timeColumns)
+    
+    dataValues$calcDF <- NULL
+    dataValues$resultDF <- NULL
+    
+    analysisValues$AFC  <- NULL
+    analysisValues$CAH  <- NULL
+    analysisValues$Clusters  <- NULL
+    
+    #plotValues$cPal <-  NULL
+    plotValues$MeanPop <-  NULL
+    plotValues$RelativeWeight <-  NULL
+    plotValues$MeanRelativeWeight <-  NULL
+  
+  })
   
   #### Data preparation ####
   
   observe({
     timeColumns <- input$timeColumnSelected
-    idColumn <- input$idColumnSelected
     rawDF <- dataValues$rawDF
     
-    if (!is.null(timeColumns) && !is.null(idColumn) && timeColumns %in% names(rawDF) && idColumn %in% names(rawDF)){
+    if (!is.null(timeColumns) && timeColumns %in% names(rawDF)){
     calcDF <- rawDF[timeColumns]
     if (nrow(unique(rawDF)) == nrow(rawDF)) {
-      row.names(calcDF) <- rawDF[,idColumn]
+      row.names(calcDF) <- rawDF$ID
     }
     dataValues$calcDF <- calcDF
     }
@@ -225,8 +242,8 @@ shinyServer(function(input, output, session) {
   output$ggmap <- renderPlot({
     if (!is.null(dataValues$resultDF) && isTRUE(input$makemap)){
       baseDF <- dataValues$resultDF
-      Lat <- baseDF[,input$LatColumnSelected]
-      Long <- baseDF[,input$LongColumnSelected]
+      Lat <- baseDF$Lat
+      Long <- baseDF$Long
       Size <- baseDF[,input$sizeAttribute]
       cPal <- plotValues$cPal
       Colour <- baseDF$TrajPopCluster
@@ -242,14 +259,14 @@ shinyServer(function(input, output, session) {
   output$webmap <- renderText({
     if (!is.null(dataValues$resultDF)){
       mapData <- dataValues$resultDF
-      mapData$Name <- mapData[,input$idColumnSelected]
+      mapData$Name <- mapData$ID
       mapData$color <- as.character(factor(x=mapData$TrajPopCluster,
                                            levels=unique(mapData$TrajPopCluster),
                                            labels=plotValues$cPal))
       lastPopColumn <- input$timeColumnSelected[length(input$timeColumnSelected)]
       mapData$pointRadius <- pointScale(data=mapData[, input$sizeAttribute], max=input$maxSize)
-      mapData$long <- mapData[,input$LongColumnSelected]
-      mapData$lat <- mapData[,input$LatColumnSelected]
+      mapData$long <- mapData$Long
+      mapData$lat <- mapData$Lat
       popup <- sprintf("Name: %s <br> Cluster : %s <br> Pop (%s) : %s",
                        mapData$Name,
                        mapData$TrajPopCluster,
@@ -516,7 +533,7 @@ shinyServer(function(input, output, session) {
   afcPopup <- function(x) {
     if ("name" %in% names(x)){
       plotData <- dataValues$resultDF
-      plotData$Name <- plotData[,input$idColumnSelected]
+      plotData$Name <- plotData$ID
       myCluster <- plotData[plotData$Name == x$name,"TrajPopCluster"][[1]]
       #myCluster <- 3
       sprintf("Name : %s <br />Cluster : %s", x$name, myCluster)
@@ -525,33 +542,10 @@ shinyServer(function(input, output, session) {
   
 })
 
-testDataUpdateInputs <- function(session, columns){
-  updateSelectInput(session=session, inputId="idColumnSelected",
-                    choices=columns, selected=columns[3])
-  updateSelectInput(session=session, inputId="timeColumnSelected",
-                    choices=columns, selected=list("1954", "1962", "1968", "1975", "1982", "1990", "1999"))
-  updateSelectInput(session=session, inputId="LatColumnSelected",
-                    choices=columns, selected=columns[4]) 
-  updateSelectInput(session=session, inputId="LongColumnSelected",
-                    choices=columns, selected=columns[5])
-  updateSelectInput(session=session, inputId="capitalColumnSelected",
-                    choices=columns, selected="")
-  updateSelectInput(session=session, inputId='sizeAttribute',
-                    choices=columns, selected=columns[12])
-  updateSelectInput(session=session, inputId='correspondanceColumnSelected',
-                    choices=columns, selected=columns[12])
-  updateCheckboxInput(session=session, inputId='makemap', value=TRUE)
-}
 
-updateInputs <- function(session, columns){
-  updateSelectInput(session=session, inputId="idColumnSelected",
-                    choices=columns, selected=columns[2])
+updateInputs <- function(session, columns, timeColumns){
   updateSelectInput(session=session, inputId="timeColumnSelected",
-                    choices=columns, selected="")
-  updateSelectInput(session=session, inputId="LatColumnSelected",
-                    choices=columns, selected="")
-  updateSelectInput(session=session, inputId="LongColumnSelected",
-                    choices=columns, selected="")
+                    choices=timeColumns, selected=timeColumns)
   updateSelectInput(session=session, inputId="capitalColumnSelected",
                     choices=columns, selected="")
   updateSelectInput(session=session, inputId='sizeAttribute',

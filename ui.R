@@ -9,9 +9,9 @@ library(shiny)
 shinyUI(fluidPage(theme = "spacelab.bootstrap.min.css",
                   tags$head(tags$link(rel="icon", type="image/png", href="favicon.png"), 
                             tags$title("TrajPop"),
-                            includeScript("www/analytics.js"),
-                            includeScript("http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.js"),
-                            includeCSS("http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.css")
+                            includeScript("www/analytics.js")
+                            #includeScript("http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.js"),
+                            #includeCSS("http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.css")
                             ),
                   #absolutePanel(h1("ABC"), bottom = "10%", left = "10%", width = "150px", height = "200px", draggable = TRUE, cursor = "move"),
                   fluidRow(
@@ -23,8 +23,8 @@ shinyUI(fluidPage(theme = "spacelab.bootstrap.min.css",
                     sidebarPanel(
                       selectInput(inputId = 'dataset', label = "Choose country",
                                   multiple = FALSE,
-                                  choices = c("Brazil", "Russia", "India", "China", "South Africa")),                   
-                      selectInput("idColumnSelected", "ID column :", choices="", multiple=FALSE),
+                                  choices = c("Brazil", "Russia", "India", "China", "South Africa", "USA", "France")),                   
+  
                       selectInput("timeColumnSelected", "Temporal columns :", choices="", multiple=TRUE),
                       selectizeInput(inputId = 'brewerPalette', label="Color Palette", choices = colorPaletteList,
                                      multiple=FALSE, selected="Set1", options = list(
@@ -79,9 +79,7 @@ return '<div><img ' +
                                  downloadButton(outputId='tableExport', label='Download Table')),
                         tabPanel("Maps",
                                  fluidRow(
-                                   column(4, selectInput("LatColumnSelected", "Latitude column :",choices="", multiple=FALSE)),
-                                   column(4, selectInput("LongColumnSelected", "Longitude column:",choices="", multiple=FALSE)),
-                                   column(4, selectInput('sizeAttribute', 'Scales points on :', choices="", multiple=FALSE))
+                                  selectInput('sizeAttribute', 'Scales points on :', choices="", multiple=FALSE)
                                    ),
                                  htmlOutput('webmap'),
                                  sliderInput('maxSize', 'Max. point size', value=25, min=1, max=100),
