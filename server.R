@@ -12,7 +12,7 @@ shinyServer(function(input, output, session) {
   
   load("data/countriesPop.RData")
   
-  dataValues <- reactiveValues(dataSource= NULL, rawDF = NULL, calcDF = NULL, resultDF = NULL)
+  dataValues <- reactiveValues(dataSource= NULL, rawDF = NULL, filtredDF = NULL, calcDF = NULL, resultDF = NULL)
   
   analysisValues <- reactiveValues(AFC = NULL, CAH = NULL, Clusters = NULL)
   
@@ -54,7 +54,9 @@ shinyServer(function(input, output, session) {
     } else  {
       dataValues$rawDF <- France 
     }
-    timeColumns <-  as.numeric(na.omit(as.numeric(unlist(colnames(dataValues$rawDF)))))
+    
+    
+    timeColumns <- as.numeric(na.omit(as.numeric(unlist(colnames(dataValues$rawDF)))))
     allColumns <- c("None", unlist(colnames(dataValues$rawDF)))
     updateInputs(session, allColumns, timeColumns)
     
@@ -65,7 +67,6 @@ shinyServer(function(input, output, session) {
     analysisValues$CAH  <- NULL
     analysisValues$Clusters  <- NULL
     
-    #plotValues$cPal <-  NULL
     plotValues$MeanPop <-  NULL
     plotValues$RelativeWeight <-  NULL
     plotValues$MeanRelativeWeight <-  NULL
@@ -79,12 +80,20 @@ shinyServer(function(input, output, session) {
     rawDF <- dataValues$rawDF
     
     if (!is.null(timeColumns) && timeColumns %in% names(rawDF)){
-    calcDF <- rawDF[timeColumns]
-    if (nrow(unique(rawDF)) == nrow(rawDF)) {
-      row.names(calcDF) <- rawDF$ID
+    dataValues$filtredDF <- rawDF[complete.cases(rawDF[timeColumns]),]
+    calcDF <- dataValues$filtredDF[timeColumns]
+    if (nrow(unique(dataValues$filtredDF)) == nrow(dataValues$filtredDF)) {
+      row.names(calcDF) <- dataValues$filtredDF$ID
     }
     dataValues$calcDF <- calcDF
     }
+  })
+  
+  output$nbCities <- renderText({
+    totalCities <- nrow(dataValues$rawDF)
+    selectedCities <- nrow(dataValues$filtredDF)
+    sprintf("<strong>%s</strong> cities selected / <strong>%s</strong> total (<em>%s &#37</em>)",
+            selectedCities, totalCities, round(selectedCities/totalCities * 100))
   })
   
   #### Analysis ####
@@ -127,7 +136,7 @@ shinyServer(function(input, output, session) {
   
   observe({
     if (!is.null(analysisValues$Clusters)){
-      resultDF <- dataValues$rawDF
+      resultDF <- dataValues$filtredDF
       resultDF$TrajPopCluster <- analysisValues$Clusters
       dataValues$resultDF <- resultDF
     } else {
@@ -274,11 +283,17 @@ shinyServer(function(input, output, session) {
                        mapData[, input$sizeAttribute])
       mapData$popup <- popup
       
-      multiMap <- OSMMap(mapData[mapData$TrajPopCluster == 1,], color='color', size='pointRadius', layer = '1', colorByFactor = F,popup = 'popup')
+      multiMap <- OSMMap(mapData[mapData$TrajPopCluster == 1,], color='color', size='pointRadius',
+                         layer = paste('1', " (", nrow(mapData[mapData$TrajPopCluster == 1,]), " cities)", sep=""),
+                         colorByFactor = FALSE,popup = 'popup')
       for (nbCluster in unique(mapData$TrajPopCluster)){
         if (nbCluster != 1){
           multiMap <- addLayers(multiMap,
-                                OSMMap(mapData[mapData$TrajPopCluster == nbCluster,], color='color', size='pointRadius', layer = nbCluster, colorByFactor = F,popup = 'popup'))
+                                OSMMap(mapData[mapData$TrajPopCluster == nbCluster,],
+                                       color='color', size='pointRadius',
+                                       layer = paste(nbCluster, " (", nrow(mapData[mapData$TrajPopCluster == nbCluster,]), " cities)", sep=""),
+                                       colorByFactor = FALSE,
+                                       popup = 'popup'))
         }
       }
       #pointPlot = OSMMap(mapData, color='color', size='pointRadius', layer = 'Points', colorByFactor = F,popup = 'popup')
@@ -465,7 +480,7 @@ shinyServer(function(input, output, session) {
       globalMean <- as.data.frame(t(colMeans(calcDF)))
       globalMean$TrajPopCluster <- "Global"
       
-      df$TrajPopCluster <- analysisValues$Clusters
+      calcDF$TrajPopCluster <- analysisValues$Clusters
       l2 <- as.data.frame(do.call(rbind, (by(data=calcDF, INDICES=calcDF$TrajPopCluster, FUN=colMeans))))
       
       df2 <- as.data.frame(rbind(globalMean, l2))
@@ -549,7 +564,7 @@ updateInputs <- function(session, columns, timeColumns){
   updateSelectInput(session=session, inputId="capitalColumnSelected",
                     choices=columns, selected="")
   updateSelectInput(session=session, inputId='sizeAttribute',
-                    choices=columns, selected="")
+                    choices=columns, selected=timeColumns[length(timeColumns)])
   updateSelectInput(session=session, inputId='correspondanceColumnSelected',
                     choices=columns, selected="")
 }
