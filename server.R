@@ -59,6 +59,15 @@ shinyServer(function(input, output, session) {
     timeColumns <- as.numeric(na.omit(as.numeric(unlist(colnames(dataValues$rawDF)))))
     allColumns <- c("None", unlist(colnames(dataValues$rawDF)))
     updateInputs(session, allColumns, timeColumns)
+  
+  })
+  
+  #### Data preparation ####
+  
+  observe({
+    
+    timeColumns <- input$timeColumnSelected
+    rawDF <- dataValues$rawDF
     
     dataValues$calcDF <- NULL
     dataValues$resultDF <- NULL
@@ -70,14 +79,7 @@ shinyServer(function(input, output, session) {
     plotValues$MeanPop <-  NULL
     plotValues$RelativeWeight <-  NULL
     plotValues$MeanRelativeWeight <-  NULL
-  
-  })
-  
-  #### Data preparation ####
-  
-  observe({
-    timeColumns <- input$timeColumnSelected
-    rawDF <- dataValues$rawDF
+    
     
     if (!is.null(timeColumns) && timeColumns %in% names(rawDF)){
     dataValues$filtredDF <- rawDF[complete.cases(rawDF[timeColumns]),]
@@ -206,7 +208,7 @@ shinyServer(function(input, output, session) {
 
   #### Plot AFC ####
   observe({
-    if(!is.null(dataValues$resultDF)) {
+    if(!is.null(dataValues$resultDF) && !input$slowInternet) {
       afcPlot <- ggvisAFC(afc = analysisValues$AFC,
               clusters = analysisValues$Clusters,
               cPal = plotValues$cPal)
@@ -214,6 +216,22 @@ shinyServer(function(input, output, session) {
     }
   })
   
+  
+ output$afc_slow <- renderPlot({
+   if(!is.null(dataValues$resultDF) && input$slowInternet) {
+     
+   }
+ }) 
+ 
+ output$afc_slow <- renderPlot({
+   if(!is.null(dataValues$resultDF) && input$slowInternet) {
+       plotAFC(analysisValues$AFC,
+               analysisValues$CAH,
+               input$nbClusters,
+               analysisValues$Clusters,
+               plotValues$cPal)
+   } 
+ })
   
   #### Plot Clusters' Mean ####
   output$clustersMean <- renderPlot({
@@ -246,10 +264,18 @@ shinyServer(function(input, output, session) {
       bind_shiny(vis = ranksizePlot, plot_id = "ranksize2")
     }
   })
+ 
+ output$ranksize <- renderPlot({
+   if (!is.null(dataValues$resultDF)){
+     plotData <- dataValues$calcDF
+     rankSize <- plotRankSize(plotData)
+     print(rankSize)
+   } 
+ })
   
   #### Plot static map ####
   output$ggmap <- renderPlot({
-    if (!is.null(dataValues$resultDF) && isTRUE(input$makemap)){
+    if (!is.null(dataValues$resultDF)){
       baseDF <- dataValues$resultDF
       Lat <- baseDF$Lat
       Long <- baseDF$Long
@@ -304,7 +330,15 @@ shinyServer(function(input, output, session) {
 
   #### Plot table ####
   output$mytable <- renderDataTable({
-    dataValues$resultDF
+    if (!input$slowInternet){
+      dataValues$resultDF  
+    }
+  })
+  
+  output$mytable_slow <- renderTable({
+    if (input$slowInternet){
+      dataValues$resultDF  
+    }
   })
   
   #### Plot contingency table ####
@@ -566,5 +600,5 @@ updateInputs <- function(session, columns, timeColumns){
   updateSelectInput(session=session, inputId='sizeAttribute',
                     choices=columns, selected=timeColumns[length(timeColumns)])
   updateSelectInput(session=session, inputId='correspondanceColumnSelected',
-                    choices=columns, selected="")
+                    choices=columns, selected=timeColumns[length(timeColumns)])
 }

@@ -21,6 +21,7 @@ shinyUI(fluidPage(theme = "spacelab.bootstrap.min.css",
                   ),
                   sidebarLayout(
                     sidebarPanel(
+                      checkboxInput(inputId = "slowInternet", label = "Slow internet ?", value = TRUE),
                       selectInput(inputId = 'dataset', label = "Choose country",
                                   multiple = FALSE,
                                   choices = c("South Africa", "Brazil", "Russia", "India", "China", "USA", "France")),                   
@@ -54,7 +55,10 @@ return '<div><img ' +
                         tabPanel(title = "Clusters Plots",
                                  #uiOutput("debugTools"),
                                  plotOutput("tree"),
-                                 ggvisOutput("afc"),
+                                 conditionalPanel(condition = "!input.slowInternet",
+                                                  ggvisOutput("afc")),
+                                 conditionalPanel(condition = "input.slowInternet",
+                                                  plotOutput("afc_slow")),
                                  plotOutput("clustersMean"),
                                  plotOutput("clustersWeights"),
                                  plotOutput("clustersMeanWeights")
@@ -73,18 +77,30 @@ return '<div><img ' +
                         ),
                         
                         tabPanel(title="RankSize & RankClock",
-                                 ggvisOutput("ranksize2")
+                                 conditionalPanel(condition = "!input.slowInternet",
+                                                  ggvisOutput("ranksize2")),
+                                 conditionalPanel(condition = "input.slowInternet",
+                                                  plotOutput("ranksize"))
                                  ),
                         tabPanel("Table",
-                                 dataTableOutput('mytable'),
+                                 conditionalPanel(condition = "!input.slowInternet",
+                                                  dataTableOutput('mytable')),
+                                 conditionalPanel(condition = "input.slowInternet",
+                                                  tableOutput('mytable_slow')),
                                  downloadButton(outputId='tableExport', label='Download Table')),
                         tabPanel("Maps",
                                  fluidRow(
-                                  selectInput('sizeAttribute', 'Scales points on :', choices="", multiple=FALSE)
+                                   column(6,
+                                          selectInput('sizeAttribute', 'Scales points on :',
+                                                      choices="", multiple=FALSE)),
+                                   column(6, sliderInput('maxSize', 'Max. point size',
+                                                         value=25, min=1, max=100))
                                    ),
-                                 htmlOutput('webmap'),
-                                 sliderInput('maxSize', 'Max. point size', value=25, min=1, max=100),
-                                 plotOutput('ggmap')),
+                                 conditionalPanel(condition = "!input.slowInternet",
+                                                  htmlOutput('webmap')),
+                                 conditionalPanel(condition = "input.slowInternet",
+                                                  plotOutput('ggmap'))
+                        ),
                         tabPanel('Correspondence',
                                  fluidRow(
                                    column(6, selectInput("correspondanceColumnSelected", "Correspondence column :",choices="", multiple=FALSE)),
@@ -102,7 +118,7 @@ return '<div><img ' +
                                  
                                  conditionalPanel(
                                    condition = '(input.correspondanceType == "ANOVA")',
-                                   checkboxInput(inputId='logBoxPlot', label='Log10', value=FALSE),
+                                   checkboxInput(inputId='logBoxPlot', label='Log10', value=TRUE),
                                    plotOutput(outputId='AnovaBoxPlot'),
                                    htmlOutput(outputId='AnovaResults')
                                  )),

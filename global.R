@@ -103,23 +103,23 @@ plotCAH <- function (cah, nbClusters, cPal, clusterCol) {
     return(treePlot)
 }
 
-plotAFC <- function(afc, nbClusters, clusters, cPal) {
-    inertia <- list('axe1' = round(afc$eig[1]/sum(afc$eig)*100,2),
-                    'axe2' = round(afc$eig[2]/sum(afc$eig)*100,2))
-    
-    return({
-        s.class(cstar=1,
-                addaxes=TRUE,
-                grid=FALSE,
-                axesell=FALSE,
-                dfxy=afc$li,
-                fac=as.factor(clusters),
-                col=cPal,
-                label=c(1:nbClusters),
-                sub=paste(names(inertia), ":", inertia, "%",sep=" ", collapse=" - "),
-                csub=1.2,
-                possub="bottomright")
-    })
+plotAFC <- function(afc, cah, nbClusters, clusters, cPal) {
+  inertia <- list('axe1' = round(afc$eig[1]/sum(afc$eig)*100,2),
+                  'axe2' = round(afc$eig[2]/sum(afc$eig)*100,2))
+  
+  return({
+    s.class(cstar=1,
+            addaxes=TRUE,
+            grid=FALSE,
+            axesell=FALSE,
+            dfxy=afc$li,
+            fac=as.factor(clusters),
+            col=cPal,
+            label=c(1:nbClusters),
+            sub=paste(names(inertia), ":", inertia, "%",sep=" ", collapse=" - "),
+            csub=1.2,
+            possub="bottomright")
+  })
 }
 
 
